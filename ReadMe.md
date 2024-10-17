@@ -1,62 +1,74 @@
 # Java Chatbot CLI
 
-This is a simple Java Chatbot Application that interacts with the Groq API.
+Welcome to the **Java Chatbot CLI**! This is a simple yet powerful command-line application that allows you to interact with a chatbot powered by the Groq API. Whether you’re looking to get answers to your questions or just want to have a chat, this chatbot is here to help!
 
 ## Prerequisites
 
-- Java JDK (version 8 or higher)
-- Maven
+Before you get started, ensure you have the following installed on your machine:
+
+- **Java JDK** (version 8 or higher)
+- **Maven**
 
 ## Installation and Setup
 
-1. Clone the repository:
-   ```shell
+Follow these steps to set up the project on your local machine:
+
+1. **Clone the Repository**:
+   ```bash
    git clone https://github.com/ppewjjdup/ChatBot.git
    cd ChatBot/
    ```
 
-2. Set up your Groq API key:
-    - Create a `config.properties` file in the `src/main/resources` directory
-    - Add your Groq API key to the file:
-      ```
-      api.key=your_api_key_here
-      ```
+2. **Set Up Your Groq API Key**:
+   - Create a `config.properties` file in the `src/main/resources` directory.
+   - Add your Groq API key to the file like this:
+     ```
+     api.key=your_api_key_here
+     ```
 
 ## Building the Application
 
-To build the JAR file, run the following command in the project root directory:
+To compile the code and create a JAR file, run the following command from the project root directory:
 
-```shell
+```bash
 mvn clean package
 ```
 
-This will compile the code and create a JAR file in the `target` directory.
+This command will build the project and place the resulting JAR file in the `target` directory.
 
 ## Running the Application
 
-To run the Chatbot CLI, use the following command:
+To start the Chatbot CLI, use the command below:
 
-```shell
+```bash
 java -jar target/Ai-Chatbot-CLI-1.0-SNAPSHOT.jar
 ```
 
 ## Usage
 
-Once the application is running:
+Once the application is running, you can interact with the chatbot in the console:
 
-1. Type your messages or questions in the console.
-2. Press Enter to send your message to the chatbot.
-3. The chatbot will respond based on the Groq API's output.
-4. To exit the application, type '/quit'.
-5. The chat history will in saved in `conversation.xml`.
+1. **Type your messages or questions** and press **Enter** to send them.
+2. The chatbot will respond based on the output from the Groq API.
+3. To exit the application, simply type **'/quit'**.
+4. Your chat history will be saved in a file named `conversation.xml`.
+
+## Available Commands
+
+While interacting with the chatbot, you can use the following commands:
+
+- **/help**: Displays a list of available commands and how to use them.
+- **/reset**: Resets the conversation, clearing the chat history while saving the current conversation to an XML file.
+- **/quit**: Saves the conversation to an XML file and exits the application.
 
 ## Troubleshooting
 
-If you encounter any issues:
-- Ensure your Groq API key is correctly set in the `config.properties` file.
-- Check that you have the required Java version installed.
-- Verify that all dependencies are correctly specified in the `pom.xml` file.
+If you run into any issues, here are a few things to check:
+
+- Make sure your Groq API key is correctly set in the `config.properties` file.
+- Ensure you have the required version of Java installed.
+- Verify that all dependencies are listed correctly in the `pom.xml` file.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+We welcome contributions to this project! If you have any improvements or new features in mind, please feel free to submit a Pull Request.
