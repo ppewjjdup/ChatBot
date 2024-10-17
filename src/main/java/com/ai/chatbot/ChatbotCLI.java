@@ -3,73 +3,106 @@ package com.ai.chatbot;
 import java.util.Scanner;
 import java.util.ArrayList;
 import java.util.List;
-import java.io.FileWriter;
-import java.io.File;
-import javax.xml.stream.XMLOutputFactory;
-import javax.xml.stream.XMLStreamWriter;
+import java.io.*;
+import javax.xml.stream.*;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.io.*;
-
-
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 class Message {
     String sender;
     String content;
+    String timestamp;
 
     Message(String sender, String content) {
         this.sender = sender;
         this.content = content;
+        this.timestamp = getDateAndTime();
+    }
+
+    private static String getDateAndTime() {
+        return ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z"));
     }
 }
 
 public class ChatbotCLI {
+    private static final String SYSTEM_PROMPT = "You are a knowledgeable, efficient, and direct Al assistant. Provide concise answers, focusing on the key information needed. Offer suggestions tactfully when appropriate to improve outcomes. Engage in productive collaboration with the user utilising multi-step reasoning to answer the question, if there are multiple questions in the initial question split them up and answer them in the order that will provide the most accurate response.";
+    private static final String XML_FILE_NAME = "conversation.xml";
+    private static final Logger logger = Logger.getLogger(ChatbotCLI.class.getName());
+
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        ChatbotAPIClient apiClient = new ChatbotAPIClient();
+        ChatbotAPIClient apiClient = new ChatbotAPIClient(SYSTEM_PROMPT);
         List<Message> conversation = new ArrayList<>();
 
-        // Get the current date and time when the conversation starts
         String conversationStartTime = getDateAndTime();
-
         System.out.println("Welcome to Chatbot CLI!");
+        printHelp();
 
         while (true) {
-            System.out.print("You: ");
-            String input = scanner.nextLine().trim();
-
-            if (input.equalsIgnoreCase("/quit")) {
-                System.out.println("Saving conversation and quitting...");
-                saveConversationToXML(conversation, conversationStartTime);
-                System.out.println("Goodbye!");
-                break;
-            }
-            conversation.add(new Message("You", input));
-
             try {
+                System.out.print("You: ");
+                String input = scanner.nextLine().trim();
+
+                if (handleCommand(input, apiClient, conversation, conversationStartTime)) {
+                    continue;
+                }
+
+                conversation.add(new Message("You", input));
+
                 String response = apiClient.sendMessage(input);
                 conversation.add(new Message("Groq", response));
                 System.out.println("Groq: " + response);
             } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
-                conversation.add(new Message("System", "Error: " + e.getMessage()));
+                handleError(e, conversation);
             }
         }
+    }
 
-        scanner.close();
+    private static boolean handleCommand(String input, ChatbotAPIClient apiClient, List<Message> conversation, String conversationStartTime) {
+        switch (input.toLowerCase()) {
+            case "/quit":
+                System.out.println("Saving conversation and quitting...");
+                saveConversationToXML(conversation, conversationStartTime);
+                System.out.println("Goodbye!");
+                System.exit(0);
+                return true;
+            case "/reset":
+                System.out.println("Saving and resetting conversation...");
+                apiClient.resetConversation();
+                saveConversationToXML(conversation, conversationStartTime);
+                conversation.clear();
+                System.out.println("Conversation reset. You can start a new conversation.");
+                return true;
+            case "/help":
+                printHelp();
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static void printHelp() {
+        System.out.println("Available commands:");
+        System.out.println("/help  - Show this help message");
+        System.out.println("/reset - Reset the conversation");
+        System.out.println("/quit  - Save the conversation and exit");
+    }
+
+    private static void handleError(Exception e, List<Message> conversation) {
+        String errorMessage = "Error: " + e.getMessage();
+        System.err.println(errorMessage);
+        conversation.add(new Message("System", errorMessage));
+        logger.log(Level.SEVERE, "An error occurred", e);
     }
 
     private static String getDateAndTime() {
-        // Get the current date and time with time zone
-        ZonedDateTime currentDateTime = ZonedDateTime.now();
-        // Define the desired string format
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z");
-        // Return the formatted date and time string
-        return currentDateTime.format(formatter);
+        return ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z"));
     }
 
     private static void saveConversationToXML(List<Message> conversation, String conversationStartTime) {
-        File xmlFile = new File("conversation.xml");
+        File xmlFile = new File(XML_FILE_NAME);
         boolean fileExists = xmlFile.exists() && xmlFile.length() > 0;
 
         try {
@@ -84,27 +117,7 @@ public class ChatbotCLI {
                 xmlStreamWriter.writeCharacters("\n");
             }
 
-            xmlStreamWriter.writeCharacters("  ");
-            xmlStreamWriter.writeStartElement("conversation");
-            xmlStreamWriter.writeAttribute("startTime", conversationStartTime);
-            xmlStreamWriter.writeCharacters("\n");
-
-            for (Message message : conversation) {
-                xmlStreamWriter.writeCharacters("    ");
-                xmlStreamWriter.writeStartElement("message");
-                xmlStreamWriter.writeAttribute("sender", message.sender);
-                xmlStreamWriter.writeCharacters("\n      ");
-                xmlStreamWriter.writeStartElement("content");
-                xmlStreamWriter.writeCData(message.content);
-                xmlStreamWriter.writeEndElement(); // content
-                xmlStreamWriter.writeCharacters("\n    ");
-                xmlStreamWriter.writeEndElement(); // message
-                xmlStreamWriter.writeCharacters("\n");
-            }
-
-            xmlStreamWriter.writeCharacters("  ");
-            xmlStreamWriter.writeEndElement(); // conversation
-            xmlStreamWriter.writeCharacters("\n");
+            writeConversationToXML(xmlStreamWriter, conversation, conversationStartTime);
 
             if (!fileExists) {
                 xmlStreamWriter.writeEndElement(); // conversations
@@ -116,35 +129,66 @@ public class ChatbotCLI {
             xmlStreamWriter.close();
 
             String xmlContent = stringWriter.toString();
+            appendOrWriteToFile(xmlFile, xmlContent, fileExists);
 
-            if (fileExists) {
-                // Read existing content
-                BufferedReader reader = new BufferedReader(new FileReader(xmlFile));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (line.trim().equals("</conversations>")) {
-                        sb.append(xmlContent);
-                    }
-                    sb.append(line).append("\n");
-                }
-                reader.close();
-
-                // Write updated content
-                FileWriter writer = new FileWriter(xmlFile);
-                writer.write(sb.toString());
-                writer.close();
-            } else {
-                FileWriter writer = new FileWriter(xmlFile);
-                writer.write(xmlContent);
-                writer.close();
-            }
-
-            System.out.println("Conversation saved to conversation.xml");
-
+            System.out.println("Conversation saved to " + XML_FILE_NAME);
         } catch (Exception e) {
-            System.out.println("Error saving conversation to XML: " + e.getMessage());
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Error saving conversation to XML", e);
+        }
+    }
+
+    private static void writeConversationToXML(XMLStreamWriter writer, List<Message> conversation, String startTime) throws XMLStreamException {
+        writer.writeCharacters("  ");
+        writer.writeStartElement("conversation");
+        writer.writeAttribute("startTime", startTime);
+        writer.writeCharacters("\n");
+
+        for (Message message : conversation) {
+            writer.writeCharacters("    ");
+            writer.writeStartElement("message");
+            writer.writeAttribute("sender", message.sender);
+            writer.writeAttribute("timestamp", message.timestamp);
+            writer.writeCharacters("\n      ");
+            writer.writeStartElement("content");
+            writer.writeCData(message.content);
+            writer.writeEndElement(); // content
+            writer.writeCharacters("\n    ");
+            writer.writeEndElement(); // message
+            writer.writeCharacters("\n");
+        }
+
+        writer.writeCharacters("  ");
+        writer.writeEndElement(); // conversation
+        writer.writeCharacters("\n");
+    }
+
+    private static void appendOrWriteToFile(File file, String content, boolean append) throws IOException {
+        try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
+            if (append) {
+                long length = raf.length();
+                long position = length - 20; // Assuming </conversations> is within the last 20 bytes
+                String endTag = "</conversations>";
+                byte[] buffer = new byte[20];
+
+                while (position >= 0) {
+                    raf.seek(position);
+                    raf.readFully(buffer);
+                    String bufferStr = new String(buffer);
+                    int tagIndex = bufferStr.lastIndexOf(endTag);
+                    if (tagIndex != -1) {
+                        raf.setLength(position + tagIndex);
+                        break;
+                    }
+                    position--;
+                }
+
+                raf.seek(raf.length());
+                raf.writeBytes(content);
+                raf.writeBytes("</conversations>\n");
+            } else {
+                raf.setLength(0);
+                raf.writeBytes(content);
+            }
         }
     }
 }

@@ -7,6 +7,8 @@ import okhttp3.*;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 public class ChatbotAPIClient {
@@ -16,24 +18,23 @@ public class ChatbotAPIClient {
     private final OkHttpClient client = new OkHttpClient();
     private final Gson gson = new Gson();
 
-    public ChatbotAPIClient() {
+    private final String systemPrompt;
+    private final List<JsonObject> conversationHistory = new ArrayList<>();
+
+    public ChatbotAPIClient(String systemPrompt) {
+        this.systemPrompt = systemPrompt;
         loadProperties();
+        initializeConversation();
     }
 
-    // Method to load the properties file
     private void loadProperties() {
         Properties properties = new Properties();
         try (InputStream input = getClass().getClassLoader().getResourceAsStream("config.properties")) {
             if (input == null) {
                 throw new IOException("Unable to find config.properties");
             }
-
-            // Load the properties file
             properties.load(input);
-
-            // Retrieve the values from the properties file
             this.API_KEY = properties.getProperty("api.key");
-
             if (this.API_KEY == null) {
                 throw new IllegalStateException("API key is not set in properties file.");
             }
@@ -42,49 +43,57 @@ public class ChatbotAPIClient {
         }
     }
 
+    private void initializeConversation() {
+        if (systemPrompt != null && !systemPrompt.isEmpty()) {
+            JsonObject systemMessage = new JsonObject();
+            systemMessage.addProperty("role", "system");
+            systemMessage.addProperty("content", systemPrompt);
+            conversationHistory.add(systemMessage);
+        }
+    }
+
     public String sendMessage(String message) throws IOException {
-        // Create the JSON body based on the correct format
-        JsonObject jsonBody = new JsonObject();
-
-        // Set the model
-        jsonBody.addProperty("model", "llama-3.2-90b-text-preview");
-
-        // Create the "messages" array with "role" and "content"
-        JsonArray messages = new JsonArray();
         JsonObject userMessage = new JsonObject();
         userMessage.addProperty("role", "user");
         userMessage.addProperty("content", message);
-        messages.add(userMessage);
+        conversationHistory.add(userMessage);
 
-        // Add the messages array to the JSON body
-        jsonBody.add("messages", messages);
+        JsonObject jsonBody = new JsonObject();
+        jsonBody.addProperty("model", "llama-3.2-11b-text-preview");
+        jsonBody.add("messages", gson.toJsonTree(conversationHistory));
 
-        // Build the request body
         RequestBody body = RequestBody.create(jsonBody.toString(), JSON);
         Request request = new Request.Builder()
                 .url(API_URL)
                 .post(body)
-                .addHeader("Authorization", "Bearer " + API_KEY)  // Correct Authorization format
+                .addHeader("Authorization", "Bearer " + API_KEY)
                 .build();
 
-        // Execute the request and handle the response
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
-                String errorResponse = response.body().string();
-                throw new IOException("Unexpected code " + response + " - " + errorResponse);
+                throw new IOException("Unexpected code " + response);
             }
 
-            // Parse the JSON response
             JsonObject jsonResponse = gson.fromJson(response.body().string(), JsonObject.class);
-
-            // Extract the text from the "choices" array
             JsonArray choices = jsonResponse.getAsJsonArray("choices");
-            if (choices != null && choices.size() > 0) {
+            if (choices != null && !choices.isEmpty()) {
                 JsonObject choice = choices.get(0).getAsJsonObject();
-                return choice.getAsJsonObject("message").get("content").getAsString();
+                String assistantResponse = choice.getAsJsonObject("message").get("content").getAsString();
+
+                JsonObject assistantMessage = new JsonObject();
+                assistantMessage.addProperty("role", "assistant");
+                assistantMessage.addProperty("content", assistantResponse);
+                conversationHistory.add(assistantMessage);
+
+                return assistantResponse;
             } else {
                 throw new IOException("No choices found in the response");
             }
         }
+    }
+
+    public void resetConversation() {
+        conversationHistory.clear();
+        initializeConversation();
     }
 }
