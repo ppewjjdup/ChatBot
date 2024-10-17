@@ -11,7 +11,7 @@ This is a simple Java Chatbot Application that interacts with the Groq API.
 
 1. Clone the repository:
    ```shell
-   git clone https://github.com/yourusername/ChatBot.git
+   git clone https://github.com/ppewjjdup/ChatBot.git
    cd ChatBot/
    ```
 
@@ -47,7 +47,8 @@ Once the application is running:
 1. Type your messages or questions in the console.
 2. Press Enter to send your message to the chatbot.
 3. The chatbot will respond based on the Groq API's output.
-4. To exit the application, type '/quit' and press Enter.
+4. To exit the application, type '/quit'.
+5. The chat history will in saved in `conversation.xml`.
 
 ## Troubleshooting
 
