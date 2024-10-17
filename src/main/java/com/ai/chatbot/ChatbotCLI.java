@@ -10,6 +10,34 @@ import java.time.format.DateTimeFormatter;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
+
+enum AIModel {
+    GEMMA2_9B("gemma2-9b-it"),
+    GEMMA_7B("gemma-7b-it"),
+    LLAMA3_GROQ_70B_TOOL_USE("llama3-groq-70b-8192-tool-use-preview"),
+    LLAMA3_GROQ_8B_TOOL_USE("llama3-groq-8b-8192-tool-use-preview"),
+    LLAMA3_1_405B("llama-3.1-405b"),
+    LLAMA3_1_70B("llama-3.1-70b-versatile"),
+    LLAMA3_1_8B("llama-3.1-8b-instant"),
+    LLAMA3_2_1B("llama-3.2-1b-preview"),
+    LLAMA3_2_3B("llama-3.2-3b-preview"),
+    LLAMA_GUARD_3_8B("llama-guard-3-8b"),
+    LLAVA_1_5_7B("llava-v1.5-7b-4096-preview"),
+    META_LLAMA3_70B("llama3-70b-8192"),
+    META_LLAMA3_8B("llama3-8b-8192"),
+    MIXTRAL_8X7B("mixtral-8x7b-32768");
+
+    private final String modelId;
+
+    AIModel(String modelId) {
+        this.modelId = modelId;
+    }
+
+    public String getModelId() {
+        return modelId;
+    }
+}
+
 class Message {
     String sender;
     String content;
@@ -30,6 +58,7 @@ public class ChatbotCLI {
     private static final String SYSTEM_PROMPT = "You are a knowledgeable, efficient, and direct Al assistant. Provide concise answers, focusing on the key information needed. Offer suggestions tactfully when appropriate to improve outcomes. Engage in productive collaboration with the user utilising multi-step reasoning to answer the question, if there are multiple questions in the initial question split them up and answer them in the order that will provide the most accurate response.";
     private static final String XML_FILE_NAME = "conversation.xml";
     private static final Logger logger = Logger.getLogger(ChatbotCLI.class.getName());
+    private static boolean isModelSelected = false;
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
@@ -42,6 +71,31 @@ public class ChatbotCLI {
 
         while (true) {
             try {
+                if(!isModelSelected){
+                    System.out.println("\nChoose which model you want to use ");
+                    System.out.println("\nAvailable Models : ");
+
+                    for (AIModel model: AIModel.values()){
+                        System.out.println(model.ordinal() + 1 +" "+ model.getModelId());
+                    }
+                    System.out.println("0. exit");
+                    int choice = scanner.nextInt();
+                    scanner.nextLine();  // Properly consume the newline character
+
+                    if(choice == 0){
+                        break;
+                    }
+
+                    if(choice < 1 || choice > AIModel.values().length){
+                        System.out.println("Incorrect Input. exiting ..");
+                    }
+
+                    apiClient.MODEL_ID = AIModel.values()[choice - 1].getModelId();
+
+                    System.out.println("Chosen Model : " + AIModel.values()[choice - 1].getModelId());
+                    isModelSelected = true;
+                }
+
                 System.out.print("You: ");
                 String input = scanner.nextLine().trim();
 

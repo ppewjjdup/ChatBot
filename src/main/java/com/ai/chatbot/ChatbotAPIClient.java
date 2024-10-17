@@ -17,6 +17,7 @@ public class ChatbotAPIClient {
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private final OkHttpClient client = new OkHttpClient();
     private final Gson gson = new Gson();
+    public String MODEL_ID;
 
     private final String systemPrompt;
     private final List<JsonObject> conversationHistory = new ArrayList<>();
@@ -59,7 +60,7 @@ public class ChatbotAPIClient {
         conversationHistory.add(userMessage);
 
         JsonObject jsonBody = new JsonObject();
-        jsonBody.addProperty("model", "llama-3.2-11b-text-preview");
+        jsonBody.addProperty("model", MODEL_ID);
         jsonBody.add("messages", gson.toJsonTree(conversationHistory));
 
         RequestBody body = RequestBody.create(jsonBody.toString(), JSON);
