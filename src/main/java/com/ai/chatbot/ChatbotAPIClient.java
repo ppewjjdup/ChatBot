@@ -6,13 +6,41 @@ import com.google.gson.JsonObject;
 import okhttp3.*;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
 
 public class ChatbotAPIClient {
-    private static final String API_URL = "https://api.groq.com/openai/v1/chat/completions";
-    private static final String API_KEY = "Your_API_Key"; // Replace with your actual API key
+    private final String API_URL = "https://api.groq.com/openai/v1/chat/completions";
+    private String API_KEY;
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private final OkHttpClient client = new OkHttpClient();
     private final Gson gson = new Gson();
+
+    public ChatbotAPIClient() {
+        loadProperties();
+    }
+
+    // Method to load the properties file
+    private void loadProperties() {
+        Properties properties = new Properties();
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream("config.properties")) {
+            if (input == null) {
+                throw new IOException("Unable to find config.properties");
+            }
+
+            // Load the properties file
+            properties.load(input);
+
+            // Retrieve the values from the properties file
+            this.API_KEY = properties.getProperty("api.key");
+
+            if (this.API_KEY == null) {
+                throw new IllegalStateException("API key is not set in properties file.");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     public String sendMessage(String message) throws IOException {
         // Create the JSON body based on the correct format

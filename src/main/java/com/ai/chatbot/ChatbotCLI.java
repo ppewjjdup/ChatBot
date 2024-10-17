@@ -7,7 +7,7 @@ public class ChatbotCLI {
         Scanner scanner = new Scanner(System.in);
         ChatbotAPIClient apiClient = new ChatbotAPIClient();
 
-        System.out.println("Welcome to Groq CLI!");
+        System.out.println("Welcome to Chatbot CLI!");
 
         while (true) {
             System.out.print("You: ");
